@@ -29,7 +29,8 @@
   "Path to default Flex SDK"
   :group 'flashdev)
 
-(require 'flashdev-ant)
+;(require 'flashdev-ant)
+(require 'flashdev-fcsh)
 
 (provide 'flashdev)
 ;;; flashdev.el ends here
