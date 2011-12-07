@@ -8,6 +8,7 @@
 ;;; Commentary: Based on fcsh-mode.el by Denis Martinez
 
 (require 'compile)
+(require 'tq)
 
 (defcustom flashdev-fcsh-buffer "*flashdev-comilation-log*"
   "Buffer name for FCSH output"
