@@ -103,6 +103,8 @@
 
 (defun flashdev-fcsh-build ()
   (interactive)
+  (if (not flashdev-fcsh-queue)
+	  (flashdev-fcsh-run))
   (with-current-buffer
 	  (if (not flashdev-fcsh-id)
 			 (flashdev-fcsh-get-id)
