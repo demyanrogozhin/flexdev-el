@@ -19,13 +19,16 @@
  This file must contain at least one FCSH command"
   :group 'flashdev)
 
-(defvar flashdev-fcsh-id nil
-  "ID of fcsh build of current project.")
+(defvar flashdev-fcsh-id)
+(setq dbgcount 0)
+(defun mydbg (str) (display-message-or-buffer (format "=%s= %s" dbgcount str)) (incf dbgcount)
+  ;; (if (> dbgcount 12) (tq-close flashdev-fcsh-queue))
+  )
 
 (defun flashdev-fcsh-run ()
-;; (process-status fcsh-proc)
-	  (setq fcsh-proc (start-process "flashdev-fcsh" nil (concat flashdev-default-sdk "/bin/fcsh")))
-	  (setq flashdev-fcsh-queue (tq-create fcsh-proc)))
+	  (setq fcsh-proc (start-process "flashdev-fcsh" "*fcsh*" (concat flashdev-default-sdk "/bin/fcsh")))
+	  (setq flashdev-fcsh-queue (tq-create fcsh-proc))
+	  (tq-enqueue flashdev-fcsh-queue "" "(fcsh) " nil 'flashdev-fcsh-handler t))
 
 (defun flashdev-fcsh-cmd-params (cmd closure)
   (let ((question (concat cmd "\n"))
@@ -36,8 +39,9 @@
 (defun flashdev-fcsh-cmd (cmd)
 	  (flashdev-fcsh-cmd-params cmd nil))
 
-(defun flashdev-fcsh-handler (params output)
-  (let ((fcsh-return output))
+(defun flashdev-fcsh-handler (params info)
+  (let ((fcsh-return info))
+	(mydbg (format "fcsh: params = %s; info: %s" params info))
 	(if (not (get-buffer flashdev-fcsh-buffer))
 		(with-current-buffer (generate-new-buffer flashdev-fcsh-buffer)
 		  (make-local-variable 'compilation-error-regexp-alist-alist)
@@ -53,30 +57,40 @@
 	  (setq buffer-read-only t))))
 
 (defun flashdev-fcsh-get-params ()
-"This function must be called from source buffer"
+  "This function must be called from source buffer"
   (let ((params nil)
 		(buffer buffer-file-name)
-		(file (locate-dominating-file buffer-file-name flashdev-fcsh-params-filename)))
+		(dir (locate-dominating-file buffer-file-name flashdev-fcsh-params-filename)))
     (with-temp-buffer
-      (when file
-          (insert-file-contents (concat file flashdev-fcsh-params-filename))
-          (setf params (read (current-buffer)))
-		  (push (list 'buffer buffer) params)))
+      (if dir
+		  (progn
+			(insert-file-contents (concat dir flashdev-fcsh-params-filename))
+			(setf params (read (current-buffer)))
+			(push (list 'buffer buffer) params))))
     params))
 
-(defun flashdev-fcsh-add-build ()
-  (let* ((params (flashdev-fcsh-get-params))
+(defun flashdev-fcsh-add-build (&optional build params)
+  (let* ((params (if params params
+				   (flashdev-fcsh-get-params)))
 		 (build (format "%s %s -- %s"
-					 (second (assq 'compiler params))
-					 (second (assq 'flags params))
-					 (second (assq 'script params)))))
+						(second (assq 'compiler params))
+						(second (assq 'flags params))
+						(second (assq 'script params)))))
+	(mydbg (format "fcsh: build-add! %s params = %s" build params))
 	(flashdev-fcsh-cmd build)))
+; 	(tq-enqueue flashdev-fcsh-queue  (concat build "\n") "(fcsh) " params 'flashdev-fcsh-add-handler t)))
 
-(defun flashdev-fcsh-get-id ()
-  (let* ((params (flashdev-fcsh-get-params)))
+(defun flashdev-fcsh-add-handler (params info)
+	(mydbg (format "fcsh: after-add! params = %s; output %s" params info)))
+
+
+(defun flashdev-fcsh-get-id (&optional params)
+  (let* ((params (if params params (flashdev-fcsh-get-params))))
+	(mydbg (format "fcsh: get-info! %s" params))
  	(tq-enqueue flashdev-fcsh-queue "info\n" "(fcsh) "  params 'flashdev-fcsh-info-handler t)))
 
 (defun flashdev-fcsh-info-handler (params info)
+  "This callback searchachs for ID in fcsh info output"
   (let* ((id nil)
 		 (buffer (get-file-buffer (second (assq 'buffer params))))
 		 (build (format "%s: %s -- %s"
@@ -84,31 +98,34 @@
 						(second (assq 'flags params))
 						(second (assq 'script params))))
 		 (pos (string-match
-			   (concat "\\([[:digit:]]+\\)\\(?:\n.*\\)"
+			   (concat "id: \\([[:digit:]]+\\)\\(?:\n.*\\)"
 					   (regexp-quote build)) info))
 		 (num (match-string 1 info)))
-
 		(with-current-buffer buffer
 		  (setq id (if num (string-to-int num) 0))
-		  (if (and (boundp flashdev-fcsh-id)
-				   (not (= id flashdev-fcsh-id)))
-			  (make-local-variable flashdev-fcsh-id))
-		  (setq flashdev-fcsh-id id)
-		  (cond ((= 0 flashdev-fcsh-id)
-				 (if (locate-dominating-file buffer-file-name flashdev-fcsh-params-filename)
-					 (progn
-					   (flashdev-fcsh-add-build)
-					   (flashdev-fcsh-get-id))
-				   (error "File build.el not found")))))))
+		  (mydbg (format "fcsh: after-info! build = %s; params = %s; output: %s" id params info))
+		  (cond ((zerop id)
+				   (flashdev-fcsh-add-build params))
+				;; ((and (boundp 'flashdev-fcsh-id)
+				;;    (not (= id flashdev-fcsh-id)))
+				;;    (make-local-variable flashdev-fcsh-id)))
+				(t (setq flashdev-fcsh-id id))))))
+
 
 (defun flashdev-fcsh-build ()
   (interactive)
-  (if (not flashdev-fcsh-queue)
-	  (flashdev-fcsh-run))
-  (with-current-buffer
-	  (if (not flashdev-fcsh-id)
+  (if (not (boundp 'flashdev-fcsh-queue))
+	  (flashdev-fcsh-run)
+	(if (not (consp flashdev-fcsh-queue))
+		(error "Something wron with queue: " flashdev-fcsh-queue)))
+  (with-current-buffer (current-buffer)
+	  (if (not (boundp 'flashdev-fcsh-id))
 			 (flashdev-fcsh-get-id)
-		(flashdev-fcsh-cmd (concat "compile " (number-to-string flashdev-fcsh-id))))))
+		(if (zerop flashdev-fcsh-id)
+			 (flashdev-fcsh-get-id)
+		  (progn
+			(mydbg  (concat "fcsh: compile " (number-to-string flashdev-fcsh-id)))
+			(flashdev-fcsh-cmd (concat "compile " (number-to-string flashdev-fcsh-id))))))))
 
 (provide 'flashdev-fcsh)
 ;;; flashdev-fcsh.el ends here
