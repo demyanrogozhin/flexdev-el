@@ -30,19 +30,21 @@
   )
 
 (defun flashdev-fcsh-run ()
-  "Start routine for fcsh process and transaction queue"
-	  (setq fcsh-proc (start-process "flashdev-fcsh" "*fcsh*" (concat flashdev-default-sdk "/bin/fcsh")))
+  "Start routine for fcsh process and transaction queue.
+This function creates starts FCSH and `flashdev-fcsh-queue' - Transaction Queue for FCSH process"
+	  (setq fcsh-proc (start-process "flashdev-fcsh" nil (concat flashdev-default-sdk "/bin/fcsh")))
 	  (setq flashdev-fcsh-queue (tq-create fcsh-proc))
 	  (tq-enqueue flashdev-fcsh-queue "" flashdev-fcsh-regexp nil 'flashdev-fcsh-handler t))
 
 (defun flashdev-fcsh-cmd-params (cmd closure)
-  ""
+  "Adds command to `flashdev-fcsh-queue'.
+Function `flashdev-fcsh-handler' called right after command executed."
   (let ((question (concat cmd "\n"))
 		(regexp flashdev-fcsh-regexp)
 		(fn 'flashdev-fcsh-handler))
 	(tq-enqueue flashdev-fcsh-queue question regexp closure fn t)))
 
-(defun flashdev-fcsh-cmd (cmd)
+(defun flashdev-fcsh-cmd (cmd) "Stupid shortcut to `flashdev-fcsh-cmd-params'"
 	  (flashdev-fcsh-cmd-params cmd nil))
 
 (defun flashdev-fcsh-handler (params info)
@@ -76,6 +78,7 @@
     params))
 
 (defun flashdev-fcsh-add-build (&optional build params)
+"Add build new command to FCSH. "
   (let* ((params (if params params
 				   (flashdev-fcsh-get-params)))
 		 (build (format "%s %s -- %s"
@@ -89,14 +92,14 @@
 (defun flashdev-fcsh-add-handler (params info)
 	(mydbg (format "fcsh: after-add! params = %s; output %s" params info)))
 
-
 (defun flashdev-fcsh-get-id (&optional params)
+  "Sends 'info' to FCSH. Output handled by `flashdev-fcsh-info-handler'"
   (let* ((params (if params params (flashdev-fcsh-get-params))))
 	(mydbg (format "fcsh: get-info! %s" params))
  	(tq-enqueue flashdev-fcsh-queue "info\n" flashdev-fcsh-regexp  params 'flashdev-fcsh-info-handler t)))
 
 (defun flashdev-fcsh-info-handler (params info)
-  "This callback searchachs for ID in fcsh info output"
+  "This callback searchachs for ID in FCSH info output. Handler for `flashdev-fcsh-get-id'"
   (let* ((id nil)
 		 (buffer (get-file-buffer (second (assq 'buffer params))))
 		 (build (format "%s: %s -- %s"
@@ -119,6 +122,8 @@
 
 
 (defun flashdev-fcsh-build ()
+  "Finnaly send 'compile N' command where N is `flashdev-fcsh-id' in current buffer.
+If `flashdev-fcsh-id' is unset try to find out what's build ID of this project."
   (interactive)
   (if (not (boundp 'flashdev-fcsh-queue))
 	  (flashdev-fcsh-run)

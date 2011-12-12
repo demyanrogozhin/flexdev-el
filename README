@@ -15,6 +15,6 @@ build target, that similar to code below:
 
 than do M-x flashdev-fcsh-build
 
-=It Did Not Work For Me! / Need Some Help!=
+=Troubleshooting=
 
-See source for more info.
+To understand how it works see source :).
