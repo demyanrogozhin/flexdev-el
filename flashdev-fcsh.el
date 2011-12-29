@@ -25,7 +25,7 @@
 
 (defvar flashdev-fcsh-id)
 (setq dbgcount 0)
-(defun mydbg (str) (display-message-or-buffer (format "=%s= %s" dbgcount str)) (incf dbgcount)
+(defun mydbg (str) (message "%s: %s" dbgcount str) (incf dbgcount)
   ;; (if (> dbgcount 12) (tq-close flashdev-fcsh-queue))
   )
 
