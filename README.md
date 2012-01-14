@@ -15,6 +15,6 @@ build target, that similar to code below:
 ;; fcsh-mode compile settings
 ((compiler "mxmlc")
  (flags "-incremental=true -optimize=true -actionscript-file-encoding=UTF-8")
-   (script "/absolute/pathTo/yourProject/Main.mxml"))`
+   (script "/absolute/pathTo/yourProject/Main.mxml"))
 </pre>
 than do `M-x flashdev-fcsh-build`
