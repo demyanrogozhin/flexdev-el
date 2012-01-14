@@ -11,11 +11,10 @@ This code in on early stage, don't expect too much out of box.
 
 Put build.el file in root of your Flex project. It must contain
 build target, that similar to code below:
-`
+<pre>
 ;; fcsh-mode compile settings
 ((compiler "mxmlc")
  (flags "-incremental=true -optimize=true -actionscript-file-encoding=UTF-8")
- (script "/absolute/pathTo/yourProject/Main.mxml"))
-`
-
-than do M-x flashdev-fcsh-build
+   (script "/absolute/pathTo/yourProject/Main.mxml"))`
+</pre>
+than do `M-x flashdev-fcsh-build`
