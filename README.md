@@ -1,10 +1,13 @@
-Flash(R) development environment for Emacs
+## Development Environment for Apache Flex ##
 
-=Status=
+Yes, you read it right Apache. The goal of project is to provide
+high quality stable Flex development environment to Emacs users.
+
+## Status ##
 
 This code in on early stage, don't expect too much out of box.
 
-=HowTo Build Project With FCSH=
+## How To Build Your Project With FCSH ##
 
 Put build.el file in root of your Flex project. It must contain
 build target, that similar to code below:
@@ -14,7 +17,3 @@ build target, that similar to code below:
  (script "/absolute/pathTo/yourProject/Main.mxml"))
 
 than do M-x flashdev-fcsh-build
-
-=Troubleshooting=
-
-To understand how it works see source :).
